@@ -1,0 +1,14 @@
+{
+  "name": "animix-bot",
+  "version": "1.0.0",
+  "main": "animix.js",
+  "scripts": {
+    "start": "node animix.js"
+  },
+  "dependencies": {
+    "axios": "^1.4.0",
+    "colors": "^1.4.0",
+    "https-proxy-agent": "^5.0.1"
+  },
+  "author": "<https://web.telegram.org/k/#@dredchat>"
+}
