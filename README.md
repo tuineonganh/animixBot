@@ -26,6 +26,6 @@ npm install
 node animix.js
 ```
 # Contact
-Telegram: <https://t.me/tuineonganh>
-Group: <https://t.me/dredchat>
+- Telegram: <https://t.me/tuineonganh>
+- Group: <https://t.me/dredchat>
 
