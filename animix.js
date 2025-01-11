@@ -265,6 +265,7 @@ async mixPet(proxyAgent, query, stt) {
                     mom.amount--;
                     dad.amount--;
                     counter++;
+                    petIds.add(mixKey1);
                 } else {
                     console.log(`[Account ${stt}] Mix không thành công. Response: ${JSON.stringify(mixResponse.data)}`.yellow);
                 }
