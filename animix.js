@@ -380,7 +380,6 @@ async mixPet(proxyAgent, query, stt) {
     }
 }
 
-
  async claimBonusGacha(proxyAgent, query, stt) {
     try {
         const headers = { ...this.headers, 'tg-init-data': `${query}` };
@@ -390,10 +389,16 @@ async mixPet(proxyAgent, query, stt) {
         });
 
         const bonusData = bonusResponse.data.result;
-        const { current_step, is_claimed_god_power, is_claimed_dna } = bonusData;
+        const { 
+            current_step, 
+            is_claimed_god_power, 
+            is_claimed_dna, 
+            step_bonus_god_power, 
+            step_bonus_dna 
+        } = bonusData;
 
-        if (current_step >= 50 && !is_claimed_god_power) {
-            console.log(`[Account ${stt}] Claim thành công bonus 20 God Power`.green);
+        if (current_step >= step_bonus_god_power && !is_claimed_god_power) {
+            console.log(`[Account ${stt}] Claim thành công bonus ${bonusData.god_power_bonus} God Power`.green);
             await axios.post(
                 'https://pro-api.animix.tech/public/pet/dna/gacha/bonus/claim',
                 { reward_no: 1 }, 
@@ -404,7 +409,7 @@ async mixPet(proxyAgent, query, stt) {
             );
         }
 
-        if (current_step >= 200 && !is_claimed_dna) {
+        if (current_step >= step_bonus_dna && !is_claimed_dna) {
             console.log(`[Account ${stt}] Claim thành công bonus DNA`.green);
             await axios.post(
                 'https://pro-api.animix.tech/public/pet/dna/gacha/bonus/claim',
@@ -422,7 +427,6 @@ async mixPet(proxyAgent, query, stt) {
         throw error;  
     }
 }
-
 
      async claimAchievements(proxyAgent, query, stt) {
         try {
