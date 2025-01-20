@@ -1019,6 +1019,8 @@ async processQueries(queryFilePath, proxyFilePath) {
                             await this.checkClan(proxyAgent, query, stt);          // Kiểm tra clan
                             await this.claimSeasonPass(proxyAgent, query, stt);    // Nhận season pass
                             await this.gacha(proxyAgent, query, stt);              // Gacha
+                            await this.setDefenseTeam(proxyAgent, query, stt);     // Set DefenseTeam
+                            await this.attack(proxyAgent, query, stt);             // Attack 
                             await this.claimBonusGacha(proxyAgent, query, stt);    // Nhận bonus gacha
                             await this.mixPet(proxyAgent, query, stt);             // Mix pet
                             await this.processMission(proxyAgent, query, stt);     // Xử lý nhiệm vụ
