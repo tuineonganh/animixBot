@@ -24,7 +24,7 @@ npm install
 ```
 2. Run the script:
 ```bash
-node animix.js
+node animix.js or node animix-noproxy.js (if you don't use a proxy)
 ```
 # Contact
 - Telegram: <https://t.me/tuineonganh>
