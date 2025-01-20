@@ -128,9 +128,262 @@ async quitClan(proxyAgent, query, stt, currentClanId) {
     }
 }
 
+async setDefenseTeam(proxyAgent, query, stt) {
+    try {
+        const headers = { ...this.headers, 'tg-init-data': `${query}` };
+
+        const userInfoResponse = await axios.get('https://pro-api.animix.tech/public/battle/user/info', {
+            headers,
+            httpsAgent: proxyAgent,
+        });
+
+        if (userInfoResponse.status !== 200 || !userInfoResponse.data.result) {
+            console.error(colors.red(`[Account ${stt}] Lỗi khi lấy thông tin user.`));
+            return;
+        }
+
+        const currentDefenseTeam = userInfoResponse.data.result.defense_team?.map(pet => pet.pet_id) || [];
+
+        const petResponse = await axios.get('https://pro-api.animix.tech/public/pet/list', {
+            headers,
+            httpsAgent: proxyAgent,
+        });
+
+        if (petResponse.status !== 200 || !petResponse.data.result) {
+            console.error(colors.red(`[Account ${stt}] Lỗi khi lấy danh sách pet.`));
+            return;
+        }
+
+        const pets = petResponse.data.result.map(pet => ({
+            pet_id: pet.pet_id,
+            star: pet.star,
+            level: pet.level
+        }));
+
+        if (pets.length === 0) {
+            console.warn(colors.yellow(`[Account ${stt}] Không có pet nào để chọn.`));
+            return;
+        }
+
+        pets.sort((a, b) => b.star - a.star || b.level - a.level);
+        
+        const topPets = pets.slice(0, 3); 
+
+        if (topPets.length < 3) {
+            console.warn(colors.yellow(`[Account ${stt}] Không đủ 3 pet để đặt defense team.`));
+            return;
+        }
+
+        const newDefenseTeam = topPets.map(pet => pet.pet_id);
+
+        if (currentDefenseTeam.length === 3 && currentDefenseTeam.every(id => newDefenseTeam.includes(id))) {
+            return;
+        }
+
+        const payload = {
+            pet_id_1: newDefenseTeam[0],
+            pet_id_2: newDefenseTeam[1],
+            pet_id_3: newDefenseTeam[2]
+        };
+
+        const defenseResponse = await axios.post(
+            'https://pro-api.animix.tech/public/battle/user/defense-team',
+            payload,
+            {
+                headers,
+                httpsAgent: proxyAgent,
+            }
+        );
+
+        if (defenseResponse.status === 200 && defenseResponse.data.result) {
+            console.log(colors.green(
+                `[Account ${stt}] Defense team thành công với 3 pet_id: ${payload.pet_id_1}, ${payload.pet_id_2}, ${payload.pet_id_3}.`
+            ));
+        } else {
+            console.error(colors.red(`[Account ${stt}] Lỗi khi đặt defense team.`));
+        }
+    } catch (error) {
+        console.error(colors.red(`[Account ${stt}] Lỗi trong setDefenseTeam: ${error.message}`));
+    }
+}
 
 
-    async gacha(proxyAgent, query, stt) {
+async attack(proxyAgent, query, stt) {
+    try {
+        const headers = { ...this.headers, 'tg-init-data': `${query}` };
+
+        while (true) {
+            const userInfoResponse = await axios.get('https://pro-api.animix.tech/public/battle/user/info', {
+                headers,
+                httpsAgent: proxyAgent,
+            });
+
+            if (userInfoResponse.status !== 200 || !userInfoResponse.data.result) {
+                console.error(colors.red(`[Account ${stt}] Lỗi khi lấy thông tin tài khoản.`));
+                continue;
+            }
+
+            const userInfo = userInfoResponse.data.result;
+            const availableTickets = userInfo.ticket.amount;
+
+            if (availableTickets <= 0) {
+                console.log(colors.yellow(`[Account ${stt}] Hết vé đấu, thoát...`));
+                break;
+            }
+
+            const opponentsResponse = await axios.get('https://pro-api.animix.tech/public/battle/user/opponents', {
+                headers,
+                httpsAgent: proxyAgent,
+            });
+
+            if (opponentsResponse.status !== 200 || !opponentsResponse.data.result) {
+                console.error(colors.red(`[Account ${stt}] Lỗi khi lấy đối thủ.`));
+                continue;
+            }
+
+            const opponent = opponentsResponse.data.result.opponent;
+            const opponentPets = opponent.pets.map(pet => ({
+                pet_id: pet.pet_id,
+                level: pet.level
+            }));
+
+            const petsJsonResponse = await axios.get('https://statics.animix.tech/pets.json');
+
+            if (petsJsonResponse.status !== 200 || !petsJsonResponse.data.result) {
+                console.error(colors.red(`[Account ${stt}] Lỗi khi lấy dữ liệu pets.json.`));
+                continue;
+            }
+
+            const petsData = petsJsonResponse.data.result;
+            const opponentPetsDetailed = opponentPets.map(opponentPet => {
+                const petInfo = petsData.find(p => p.pet_id === opponentPet.pet_id);
+                return petInfo ? { ...opponentPet, star: petInfo.star, class: petInfo.class } : null;
+            }).filter(Boolean);
+
+            const userPetsResponse = await axios.get('https://pro-api.animix.tech/public/pet/list', {
+                headers,
+                httpsAgent: proxyAgent,
+            });
+
+            if (userPetsResponse.status !== 200 || !userPetsResponse.data.result) {
+                console.error(colors.red(`[Account ${stt}] Lỗi khi lấy danh sách pet.`));
+                continue;
+            }
+
+            const userPets = userPetsResponse.data.result.map(pet => ({
+                pet_id: pet.pet_id,
+                star: pet.star,
+                level: pet.level,
+                class: pet.class
+            }));
+
+            const classAdvantage = { Earth: 'Water', Water: 'Wind', Wind: 'Earth' };
+
+            let strongPetsCount = 0;
+            const selectedPets = [];
+
+            for (const opponentPet of opponentPetsDetailed) {
+                let bestPet = userPets
+                    .filter(pet => pet.star >= opponentPet.star)
+                    .sort((a, b) => {
+                        if (a.star !== b.star) return b.star - a.star;
+                        if (a.level !== b.level) return b.level - a.level;
+                        const classA = classAdvantage[a.class] === opponentPet.class;
+                        const classB = classAdvantage[b.class] === opponentPet.class;
+                        return classB - classA; 
+                    })[0];
+
+                if (bestPet && !selectedPets.some(pet => pet.pet_id === bestPet.pet_id)) {
+                    selectedPets.push(bestPet);
+                    if (bestPet.star > opponentPet.star) {
+                        strongPetsCount++;
+                    }
+                }
+
+                if (strongPetsCount >= 2) {
+                    break;
+                }
+            }
+
+            if (strongPetsCount < 2) {
+                const weakOrEqualPet = userPets
+                    .filter(pet => !selectedPets.some(p => p.pet_id === pet.pet_id))
+                    .sort((a, b) => {
+                        return b.star - a.star || b.level - a.level;
+                    })[0];
+
+                if (weakOrEqualPet) {
+                    selectedPets.push(weakOrEqualPet);
+                }
+            }
+
+            if (selectedPets.length < 3) {
+                const remainingPet = userPets
+                    .filter(pet => !selectedPets.some(p => p.pet_id === pet.pet_id))
+                    .sort((a, b) => b.star - a.star || b.level - a.level)[0];
+
+                if (remainingPet) {
+                    selectedPets.push(remainingPet);
+                }
+            }
+
+            if (selectedPets.length < 3) {
+                const strongestPet = userPets
+                    .filter(pet => !selectedPets.some(p => p.pet_id === pet.pet_id))
+                    .sort((a, b) => b.star - a.star || b.level - a.level)[0];
+
+                selectedPets.push(strongestPet);
+            }
+
+            if (selectedPets.length < 3) {
+                break;
+            }
+
+            const attackPayload = {
+                opponent_id: opponent.telegram_id,
+                pet_id_1: selectedPets[0].pet_id,
+                pet_id_2: selectedPets[1].pet_id,
+                pet_id_3: selectedPets[2].pet_id
+            };
+
+
+            const attackResponse = await axios.post(
+                'https://pro-api.animix.tech/public/battle/attack',
+                attackPayload,
+                { headers, httpsAgent: proxyAgent }
+            );
+
+            if (attackResponse.status === 200 && attackResponse.data.result) {
+                const isWin = attackResponse.data.result.is_win;
+                const rounds = attackResponse.data.result.rounds;
+
+                const roundResults = rounds.map((round, index) => {
+                    const result = round.result ? 'Win' : 'Lose';
+                    return `Round ${index + 1}: ${result}`;
+                }).join(', ');
+
+                const resultMessage = isWin ? 'Win' : 'Lose';
+
+                console.log(colors.green(
+                    `[Account ${stt}] Attack: ${resultMessage}, Chi tiết: ${roundResults}, Point: ${attackResponse.data.result.score}`
+                ));
+                await this.sleep(15000); 
+
+                const updatedTickets = attackResponse.data.result.ticket.amount;
+                if (updatedTickets <= 0) {
+                    console.log(colors.cyan(`[Account ${stt}] Hết vé...`));
+                    break;
+                }
+            } else {
+                console.error(colors.red(`[Account ${stt}] Lỗi khi thực hiện tấn công.`));
+            }
+        }
+    } catch (error) {
+        console.error(colors.red(`[Account ${stt}] Lỗi trong attack: ${error.message}`));
+    }
+}
+
+async gacha(proxyAgent, query, stt) {
     try {
         const headers = { ...this.headers, 'tg-init-data': `${query}` };
         const response = await axios.get('https://pro-api.animix.tech/public/user/info', {
