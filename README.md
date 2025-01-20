@@ -12,7 +12,8 @@ This script automates various tasks for the Animix
 -  Auto Gatcha New Pets  
 -  Auto Complete Quests  
 -  Auto Mix New Pets  
--  Auto Claim Rewards  
+-  Auto Claim Rewards
+-  Auto PvP
 -  Support Multi Accounts  
 -  Support Multi-Threads
 # Setting
