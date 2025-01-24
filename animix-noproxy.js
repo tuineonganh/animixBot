@@ -103,7 +103,10 @@ async quitClan(query, stt, currentClanId) {
 async setDefenseTeam(query, stt) {
     try {
         const headers = { ...this.headers, 'tg-init-data': `${query}` };
-        const userInfoResponse = await axios.get('https://pro-api.animix.tech/public/battle/user/info', { headers });
+
+        const userInfoResponse = await axios.get('https://pro-api.animix.tech/public/battle/user/info', {
+            headers
+        });
 
         if (userInfoResponse.status !== 200 || !userInfoResponse.data.result) {
             console.error(colors.red(`[Account ${stt}] Lỗi khi lấy thông tin user.`));
@@ -111,7 +114,10 @@ async setDefenseTeam(query, stt) {
         }
 
         const currentDefenseTeam = userInfoResponse.data.result.defense_team?.map(pet => pet.pet_id) || [];
-        const petResponse = await axios.get('https://pro-api.animix.tech/public/pet/list', { headers });
+
+        const petResponse = await axios.get('https://pro-api.animix.tech/public/pet/list', {
+            headers
+        });
 
         if (petResponse.status !== 200 || !petResponse.data.result) {
             console.error(colors.red(`[Account ${stt}] Lỗi khi lấy danh sách pet.`));
@@ -130,7 +136,8 @@ async setDefenseTeam(query, stt) {
         }
 
         pets.sort((a, b) => b.star - a.star || b.level - a.level);
-        const topPets = pets.slice(0, 3);
+        
+        const topPets = pets.slice(0, 3); 
 
         if (topPets.length < 3) {
             console.warn(colors.yellow(`[Account ${stt}] Không đủ 3 pet để đặt defense team.`));
@@ -138,6 +145,7 @@ async setDefenseTeam(query, stt) {
         }
 
         const newDefenseTeam = topPets.map(pet => pet.pet_id);
+
         if (currentDefenseTeam.length === 3 && currentDefenseTeam.every(id => newDefenseTeam.includes(id))) {
             return;
         }
@@ -151,7 +159,9 @@ async setDefenseTeam(query, stt) {
         const defenseResponse = await axios.post(
             'https://pro-api.animix.tech/public/battle/user/defense-team',
             payload,
-            { headers }
+            {
+                headers
+            }
         );
 
         if (defenseResponse.status === 200 && defenseResponse.data.result) {
@@ -172,7 +182,9 @@ async attack(query, stt) {
         const headers = { ...this.headers, 'tg-init-data': `${query}` };
 
         while (true) {
-            const userInfoResponse = await axios.get('https://pro-api.animix.tech/public/battle/user/info', { headers });
+            const userInfoResponse = await axios.get('https://pro-api.animix.tech/public/battle/user/info', {
+                headers
+            });
 
             if (userInfoResponse.status !== 200 || !userInfoResponse.data.result) {
                 console.error(colors.red(`[Account ${stt}] Lỗi khi lấy thông tin tài khoản.`));
@@ -183,11 +195,13 @@ async attack(query, stt) {
             const availableTickets = userInfo.ticket.amount;
 
             if (availableTickets <= 0) {
-                console.log(colors.yellow(`[Account ${stt}] Hết vé...`));
+                console.log(colors.yellow(`[Account ${stt}] Hết vé đấu, thoát...`));
                 break;
             }
 
-            const opponentsResponse = await axios.get('https://pro-api.animix.tech/public/battle/user/opponents', { headers });
+            const opponentsResponse = await axios.get('https://pro-api.animix.tech/public/battle/user/opponents', {
+                headers
+            });
 
             if (opponentsResponse.status !== 200 || !opponentsResponse.data.result) {
                 console.error(colors.red(`[Account ${stt}] Lỗi khi lấy đối thủ.`));
@@ -195,9 +209,13 @@ async attack(query, stt) {
             }
 
             const opponent = opponentsResponse.data.result.opponent;
-            const opponentPets = opponent.pets.map(pet => ({ pet_id: pet.pet_id, level: pet.level }));
+            const opponentPets = opponent.pets.map(pet => ({
+                pet_id: pet.pet_id,
+                level: pet.level
+            }));
 
             const petsJsonResponse = await axios.get('https://statics.animix.tech/pets.json');
+
             if (petsJsonResponse.status !== 200 || !petsJsonResponse.data.result) {
                 console.error(colors.red(`[Account ${stt}] Lỗi khi lấy dữ liệu pets.json.`));
                 continue;
@@ -209,39 +227,83 @@ async attack(query, stt) {
                 return petInfo ? { ...opponentPet, star: petInfo.star, class: petInfo.class } : null;
             }).filter(Boolean);
 
-            const userPetsResponse = await axios.get('https://pro-api.animix.tech/public/pet/list', { headers });
+            const userPetsResponse = await axios.get('https://pro-api.animix.tech/public/pet/list', {
+                headers
+            });
+
             if (userPetsResponse.status !== 200 || !userPetsResponse.data.result) {
                 console.error(colors.red(`[Account ${stt}] Lỗi khi lấy danh sách pet.`));
                 continue;
             }
 
-            const userPets = userPetsResponse.data.result.map(pet => ({ pet_id: pet.pet_id, star: pet.star, level: pet.level, class: pet.class }));
+            const userPets = userPetsResponse.data.result.map(pet => ({
+                pet_id: pet.pet_id,
+                star: pet.star,
+                level: pet.level,
+                class: pet.class
+            }));
 
             const classAdvantage = { Earth: 'Water', Water: 'Wind', Wind: 'Earth' };
+
             let strongPetsCount = 0;
             const selectedPets = [];
 
             for (const opponentPet of opponentPetsDetailed) {
-                let bestPet = userPets.filter(pet => pet.star >= opponentPet.star).sort((a, b) => {
-                    if (a.star !== b.star) return b.star - a.star;
-                    if (a.level !== b.level) return b.level - a.level;
-                    return classAdvantage[b.class] === opponentPet.class - classAdvantage[a.class] === opponentPet.class;
-                })[0];
+                let bestPet = userPets
+                    .filter(pet => pet.star >= opponentPet.star)
+                    .sort((a, b) => {
+                        if (a.star !== b.star) return b.star - a.star;
+                        if (a.level !== b.level) return b.level - a.level;
+                        const classA = classAdvantage[a.class] === opponentPet.class;
+                        const classB = classAdvantage[b.class] === opponentPet.class;
+                        return classB - classA; 
+                    })[0];
 
                 if (bestPet && !selectedPets.some(pet => pet.pet_id === bestPet.pet_id)) {
                     selectedPets.push(bestPet);
-                    if (bestPet.star > opponentPet.star) strongPetsCount++;
+                    if (bestPet.star > opponentPet.star) {
+                        strongPetsCount++;
+                    }
                 }
-                if (strongPetsCount >= 2) break;
+
+                if (strongPetsCount >= 2) {
+                    break;
+                }
             }
 
-            while (selectedPets.length < 3) {
-                const additionalPet = userPets.filter(pet => !selectedPets.some(p => p.pet_id === pet.pet_id)).sort((a, b) => b.star - a.star || b.level - a.level)[0];
-                if (additionalPet) selectedPets.push(additionalPet);
-                else break;
+            if (strongPetsCount < 2) {
+                const weakOrEqualPet = userPets
+                    .filter(pet => !selectedPets.some(p => p.pet_id === pet.pet_id))
+                    .sort((a, b) => {
+                        return b.star - a.star || b.level - a.level;
+                    })[0];
+
+                if (weakOrEqualPet) {
+                    selectedPets.push(weakOrEqualPet);
+                }
             }
 
-            if (selectedPets.length < 3) break;
+            if (selectedPets.length < 3) {
+                const remainingPet = userPets
+                    .filter(pet => !selectedPets.some(p => p.pet_id === pet.pet_id))
+                    .sort((a, b) => b.star - a.star || b.level - a.level)[0];
+
+                if (remainingPet) {
+                    selectedPets.push(remainingPet);
+                }
+            }
+
+            if (selectedPets.length < 3) {
+                const strongestPet = userPets
+                    .filter(pet => !selectedPets.some(p => p.pet_id === pet.pet_id))
+                    .sort((a, b) => b.star - a.star || b.level - a.level)[0];
+
+                selectedPets.push(strongestPet);
+            }
+
+            if (selectedPets.length < 3) {
+                break;
+            }
 
             const attackPayload = {
                 opponent_id: opponent.telegram_id,
@@ -250,11 +312,33 @@ async attack(query, stt) {
                 pet_id_3: selectedPets[2].pet_id
             };
 
-            const attackResponse = await axios.post('https://pro-api.animix.tech/public/battle/attack', attackPayload, { headers });
+
+            const attackResponse = await axios.post(
+                'https://pro-api.animix.tech/public/battle/attack',
+                attackPayload,
+            );
+
             if (attackResponse.status === 200 && attackResponse.data.result) {
                 const isWin = attackResponse.data.result.is_win;
-                console.log(colors.green(`[Account ${stt}] Attack: ${isWin ? 'Win' : 'Lose'}`));
-                await this.sleep(15000);
+                const rounds = attackResponse.data.result.rounds;
+
+                const roundResults = rounds.map((round, index) => {
+                    const result = round.result ? 'Win' : 'Lose';
+                    return `Round ${index + 1}: ${result}`;
+                }).join(', ');
+
+                const resultMessage = isWin ? 'Win' : 'Lose';
+
+                console.log(colors.green(
+                    `[Account ${stt}] Attack: ${resultMessage}, Chi tiết: ${roundResults}, Point: ${attackResponse.data.result.score}`
+                ));
+                await this.sleep(15000); 
+
+                const updatedTickets = attackResponse.data.result.ticket.amount;
+                if (updatedTickets <= 0) {
+                    console.log(colors.cyan(`[Account ${stt}] Hết vé...`));
+                    break;
+                }
             } else {
                 console.error(colors.red(`[Account ${stt}] Lỗi khi thực hiện tấn công.`));
             }
@@ -264,38 +348,75 @@ async attack(query, stt) {
     }
 }
 
+
+
+
+
+
+
+
 async gacha(query, stt) {
     try {
         const headers = { ...this.headers, 'tg-init-data': `${query}` };
-        const response = await axios.get('https://pro-api.animix.tech/public/user/info', { headers });
+        const response = await axios.get('https://pro-api.animix.tech/public/user/info', {
+            headers
+        });
         if (response.status === 200 && response.data.result) {
             const godPower = response.data.result.god_power;
             const SL = Math.floor(godPower / 10);
             const gachaPromises = [];
 
             for (let i = 0; i < SL; i++) {
-                const gachaRequest = axios.post('https://pro-api.animix.tech/public/pet/dna/gacha', { amount: 10 }, { headers })
-                    .then(gachaResponse => {
-                        if (gachaResponse.status === 200 && gachaResponse.data) {
-                            console.log(`[Account ${stt}] Gacha thành công!`.green);
+                const gachaRequest = axios.post(
+                    'https://pro-api.animix.tech/public/pet/dna/gacha',
+                    { amount: 10 },
+                    {
+                        headers
+                    }
+                ).then(gachaResponse => {
+                    if (gachaResponse.status === 200 && gachaResponse.data) {
+                        const dna = gachaResponse.data.result.dna;
+
+                        if (Array.isArray(dna)) {
+                            const starCount = dna.reduce((acc, pet) => {
+                                const star = pet.star;
+                                acc[star] = (acc[star] || 0) + 1;
+                                return acc;
+                            }, {});
+
+                            let resultMessage = `Gacha thành công nhận được: `;
+                            for (const star in starCount) {
+                                resultMessage += `${starCount[star]} thẻ ${star}☆, `;
+                            }
+
+                            resultMessage = resultMessage.slice(0, -2); 
+                            console.log(`[Account ${stt}] ${resultMessage}`.green);
+                        } else {
+                            console.log(`[Account ${stt}] Gacha không nhận được thẻ hợp lệ. Dữ liệu lỗi:`, dna);
                         }
-                    })
-                    .catch(err => {
-                        console.log(`[Account ${stt}] Gacha error: ${err.message}`);
-                    });
+                    } else {
+                        console.log(`[Account ${stt}] Gacha request ${i + 1} failed:`, gachaResponse.data);
+                    }
+                }).catch(err => {
+                    console.log(`[Account ${stt}] Gacha request ${i + 1} error:`, err.message);
+                });
+
 
                 gachaPromises.push(gachaRequest);
-                await this.sleep(2000);
+
+                await this.sleep(2000); 
             }
+
             await Promise.all(gachaPromises);
         } else {
+            console.log(`[Account ${stt}] Failed to fetch user info. Response:`, response.data);
             throw new Error("Failed to fetch user info");
         }
     } catch (error) {
         console.error(`[Account ${stt}] Error: ${error.message}`.red);
+        throw error;  
     }
 }
-
 
 
 async mixPet(query, stt) {
@@ -805,6 +926,7 @@ async checkQuest(questCode, query, stt) {
         throw error;  
     }
 }
+
 
     async processQueries(queryFilePath) {
         const startTime = Date.now();
