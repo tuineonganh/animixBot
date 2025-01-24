@@ -777,6 +777,34 @@ async getList(query, stt) {
     }
 }
 
+async checkQuest(questCode, query, stt) {
+    try {
+        const headers = { ...this.headers, 'tg-init-data': `${query}` };
+
+        const response = await axios.post(
+            'https://pro-api.animix.tech/public/quest/check',
+            { quest_code: questCode},
+           {headers}
+        );
+
+        if (response.status === 200) {
+            if (response.data.result.status === true) {
+                console.log(`[Account ${stt}] Claim quest ${questCode} thành công.`.green);
+            } else {
+                console.log(`[Account ${stt}] Quest ${questCode} check failed.`.yellow);
+            }
+
+            await this.sleep(2000);
+
+            return response.data.result;
+        } else {
+            throw new Error(`Failed to check quest. Status code: ${response.status}`);
+        }
+    } catch (error) {
+        console.log(`[Account ${stt}] Error checking quest ${questCode}: ${error.message}`.red);
+        throw error;  
+    }
+}
 
     async processQueries(queryFilePath) {
         const startTime = Date.now();
