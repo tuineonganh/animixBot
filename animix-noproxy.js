@@ -591,7 +591,7 @@ async claimAchievements(query, stt) {
         }
 
         const petResponse = await axios.get('https://pro-api.animix.tech/public/pet/list', {
-            headers: { ...this.headers, 'tg-init-data': `${query}` }
+            headers: { ...this.headers, 'tg-init-data': `${query}` },
         });
 
         const pets = petResponse.data.result;
@@ -630,7 +630,17 @@ async processMission(query, stt) {
         const missionsWithoutCanCompleted = [];
 
         for (const mission of missions) {
-            const { mission_id, can_completed } = mission;
+            const {
+                mission_id,
+                can_completed,
+                pet_1_class,
+                pet_1_star,
+                pet_2_class,
+                pet_2_star,
+                pet_3_class,
+                pet_3_star,
+            } = mission;
+
             if (can_completed === true) {
                 canCompletedMissions.push(mission); 
             } else if (can_completed === undefined) {
@@ -641,7 +651,11 @@ async processMission(query, stt) {
         for (const mission of canCompletedMissions) {
             const { mission_id } = mission;
             const claimPayload = { mission_id };
-            const claimResponse = await axios.post('https://pro-api.animix.tech/public/mission/claim', claimPayload, { headers });
+            const claimResponse = await axios.post(
+                'https://pro-api.animix.tech/public/mission/claim',
+                claimPayload,
+                { headers}
+            );
 
             if (claimResponse.data.error_code === null) {
                 console.log(`[Account ${stt}] Claim mission ${mission_id} thành công`.green);
@@ -649,12 +663,23 @@ async processMission(query, stt) {
                 console.log(`[Account ${stt}] Claim mission ${mission_id} thất bại`.red);
                 continue;
             }
-            await this.sleep(2000);
+
+            await this.sleep(2000); 
         }
 
-        const allMissionsToEnter = [...canCompletedMissions, ...missionsWithoutCanCompleted];
+       const allMissionsToEnter = [...canCompletedMissions, ...missionsWithoutCanCompleted];
+
         for (const mission of allMissionsToEnter) {
-            const { mission_id, pet_1_class, pet_1_star, pet_2_class, pet_2_star, pet_3_class, pet_3_star } = mission;
+            const {
+                mission_id,
+                pet_1_class,
+                pet_1_star,
+                pet_2_class,
+                pet_2_star,
+                pet_3_class,
+                pet_3_star,
+            } = mission;
+
             const selectedPets = [];
             const conditions = [
                 { class: pet_1_class, star: pet_1_star },
@@ -663,29 +688,42 @@ async processMission(query, stt) {
             ];
 
             let canEnter = true;
+            let missingConditions = [];
             for (const condition of conditions) {
-                const key = `${condition.class}_${condition.star}`;
+                const { class: petClass, star: petStar } = condition;
+                if (!petClass || !petStar) continue; 
+
+                const key = `${petClass}_${petStar}`;
                 if (!availablePets[key] || availablePets[key].length === 0) {
                     canEnter = false;
+                    missingConditions.push(`Thiếu pet ${petClass} ${petStar}`);
                     break;
                 }
 
                 let petFound = false;
                 for (const pet of availablePets[key]) {
                     if (pet.amount > 0) {
-                        selectedPets.push({ pet_id: pet.pet_id });
+                        selectedPets.push({
+                            pet_id: pet.pet_id,
+                            class: petClass,
+                            star: petStar,
+                        });
                         pet.amount -= 1;
                         petFound = true;
                         break;
                     }
                 }
+
                 if (!petFound) {
                     canEnter = false;
+                    missingConditions.push(`Không đủ pet ${petClass} ${petStar}`);
                     break;
                 }
             }
 
-            if (!canEnter) continue;
+            if (!canEnter) {
+                continue;
+            }
 
             const payload = {
                 mission_id,
@@ -693,15 +731,21 @@ async processMission(query, stt) {
                 pet_2_id: selectedPets[1]?.pet_id || null,
                 pet_3_id: selectedPets[2]?.pet_id || null,
             };
-            const enterResponse = await axios.post('https://pro-api.animix.tech/public/mission/enter', payload, { headers });
+            const enterResponse = await axios.post(
+                'https://pro-api.animix.tech/public/mission/enter',
+                payload,
+                { headers}
+            );
 
             if (enterResponse.data.error_code === null) {
                 console.log(`[Account ${stt}] Tham gia mission ${mission_id} thành công`.green);
             } else {
-                console.log(`[Account ${stt}] Thất bại khi tham gia mission ${mission_id}`);
+                console.log(`[Account ${stt}] Thất bại khi tham gia mission ${mission_id}:`, enterResponse.data);
             }
-            await this.sleep(2000);
+
+            await this.sleep(2000); 
         }
+
     } catch (error) {
         console.log(`[Account ${stt}] Lỗi: ${error.message}`.red);
         throw error;  
