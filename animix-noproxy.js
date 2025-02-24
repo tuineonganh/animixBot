@@ -196,7 +196,7 @@ async attack(query, stt) {
 
         while (true) {
             const userInfoResponse = await axios.get('https://pro-api.animix.tech/public/battle/user/info', {
-                headers
+                headers,
             });
 
             if (userInfoResponse.status !== 200 || !userInfoResponse.data.result) {
@@ -213,7 +213,7 @@ async attack(query, stt) {
             }
 
             const opponentsResponse = await axios.get('https://pro-api.animix.tech/public/battle/user/opponents', {
-                headers
+                headers,
             });
 
             if (opponentsResponse.status !== 200 || !opponentsResponse.data.result) {
@@ -241,7 +241,7 @@ async attack(query, stt) {
             }).filter(Boolean);
 
             const userPetsResponse = await axios.get('https://pro-api.animix.tech/public/pet/list', {
-                headers
+                headers,
             });
 
             if (userPetsResponse.status !== 200 || !userPetsResponse.data.result) {
@@ -329,6 +329,7 @@ async attack(query, stt) {
             const attackResponse = await axios.post(
                 'https://pro-api.animix.tech/public/battle/attack',
                 attackPayload,
+                { headers }
             );
 
             if (attackResponse.status === 200 && attackResponse.data.result) {
