@@ -6,7 +6,7 @@ const readline = require("readline");
 
 const clan_id = 143;
 const maxThreads= 100;
-const taskTimeout = 10 * 60 * 1000; // Timeout 10 phút cho mỗi tài khoản
+const taskTimeout = 20 * 60 * 1000; // Timeout 10 phút cho mỗi tài khoản
 
 let missionsData = null;
 
