@@ -7,6 +7,19 @@ const clan_id = 143;
 const maxThreads= 50000;
 const taskTimeout = 20 * 60 * 1000; // Timeout 20 phút cho mỗi tài khoản
 
+let missionsData = null;
+
+async function loadMissionsFromAnimix() {
+    try {
+        const response = await axios.get('https://statics.animix.tech/missions.json');
+        missionsData = response.data;
+        console.log('Tải missions.json thành công.'.cyan);
+    } catch (error) {
+        console.error('Lỗi khi tải missions.json:', error.message);
+        throw error;
+    }
+}
+
 
 class Animix {
     constructor() {
@@ -694,184 +707,188 @@ async claimAchievements(query, stt) {
 }
 
   async Pets(query, stt) {
-    try {
-        const missionResponse = await axios.get('https://pro-api.animix.tech/public/mission/list', {
-            headers: { ...this.headers, 'tg-init-data': `${query}` }
-        });
+        try {
+            const missionResponse = await axios.get('https://pro-api.animix.tech/public/mission/list', {
+                headers: { ...this.headers, 'tg-init-data': query },
+            });
 
-        const missions = missionResponse.data.result;
-        const petInMission = {};
+            const missions = missionResponse.data.result;
+            const petInMission = {};
 
-        for (const mission of missions) {
-            if (mission.can_completed === false) { 
+            for (const mission of missions) {
                 for (const joinedPet of mission.pet_joined || []) {
                     const { pet_id } = joinedPet;
                     petInMission[pet_id] = (petInMission[pet_id] || 0) + 1;
                 }
             }
-        }
 
-        const petResponse = await axios.get('https://pro-api.animix.tech/public/pet/list', {
-            headers: { ...this.headers, 'tg-init-data': `${query}` },
-        });
+            const petResponse = await axios.get('https://pro-api.animix.tech/public/pet/list', {
+                headers: { ...this.headers, 'tg-init-data': query },
+            });
 
-        const pets = petResponse.data.result;
-        const availablePets = {};
-        for (const pet of pets) {
-            const key = `${pet.class}_${pet.star}`; 
-            if (!availablePets[key]) {
-                availablePets[key] = [];
-            }
-
-            const availableAmount = pet.amount - (petInMission[pet.pet_id] || 0);
-            if (availableAmount > 0) {
-                availablePets[key].push({
-                    pet_id: pet.pet_id,
-                    star: pet.star, 
-                    amount: availableAmount,
-                });
-            }
-        }
-
-        return availablePets; 
-    } catch (error) {
-        console.error(`[Account ${stt}] Lỗi: ${error.message}`.red);
-        throw error;  
-    }
-}
-
-async processMission(query, stt) {
-    try {
-        const headers = { ...this.headers, 'tg-init-data': `${query}` };
-        const missionResponse = await axios.get('https://pro-api.animix.tech/public/mission/list', { headers });
-        const missions = missionResponse.data.result;
-       
-        const availablePets = await this.Pets(query, stt); 
-        const canCompletedMissions = [];
-        const missionsWithoutCanCompleted = [];
-
-        for (const mission of missions) {
-            const {
-                mission_id,
-                can_completed,
-                pet_1_class,
-                pet_1_star,
-                pet_2_class,
-                pet_2_star,
-                pet_3_class,
-                pet_3_star,
-            } = mission;
-
-            if (can_completed === true) {
-                canCompletedMissions.push(mission); 
-            } else if (can_completed === undefined) {
-                missionsWithoutCanCompleted.push(mission); 
-            }
-        }
-
-        for (const mission of canCompletedMissions) {
-            const { mission_id } = mission;
-            const claimPayload = { mission_id };
-            const claimResponse = await axios.post(
-                'https://pro-api.animix.tech/public/mission/claim',
-                claimPayload,
-                { headers}
-            );
-
-            if (claimResponse.data.error_code === null) {
-                console.log(`[Account ${stt}] Claim mission ${mission_id} thành công`.green);
-            } else {
-                console.log(`[Account ${stt}] Claim mission ${mission_id} thất bại`.red);
-                continue;
-            }
-
-            await this.sleep(2000); 
-        }
-
-       const allMissionsToEnter = [...canCompletedMissions, ...missionsWithoutCanCompleted];
-
-        for (const mission of allMissionsToEnter) {
-            const {
-                mission_id,
-                pet_1_class,
-                pet_1_star,
-                pet_2_class,
-                pet_2_star,
-                pet_3_class,
-                pet_3_star,
-            } = mission;
-
-            const selectedPets = [];
-            const conditions = [
-                { class: pet_1_class, star: pet_1_star },
-                { class: pet_2_class, star: pet_2_star },
-                { class: pet_3_class, star: pet_3_star },
-            ];
-
-            let canEnter = true;
-            let missingConditions = [];
-            for (const condition of conditions) {
-                const { class: petClass, star: petStar } = condition;
-                if (!petClass || !petStar) continue; 
-
-                const key = `${petClass}_${petStar}`;
-                if (!availablePets[key] || availablePets[key].length === 0) {
-                    canEnter = false;
-                    missingConditions.push(`Thiếu pet ${petClass} ${petStar}`);
-                    break;
+            const pets = petResponse.data.result;
+            const availablePets = {};
+            for (const pet of pets) {
+                const key = `${pet.class}_${pet.star}`;
+                if (!availablePets[key]) {
+                    availablePets[key] = [];
                 }
 
-                let petFound = false;
-                for (const pet of availablePets[key]) {
-                    if (pet.amount > 0) {
-                        selectedPets.push({
-                            pet_id: pet.pet_id,
-                            class: petClass,
-                            star: petStar,
-                        });
-                        pet.amount -= 1;
-                        petFound = true;
+                const availableAmount = pet.amount - (petInMission[pet.pet_id] || 0);
+                if (availableAmount > 0) {
+                    availablePets[key].push({
+                        pet_id: pet.pet_id,
+                        star: pet.star,
+                        amount: availableAmount,
+                    });
+                }
+            }
+
+            return availablePets;
+        } catch (error) {
+            console.error(`[Account ${stt}] Lỗi: ${error.message}`.red);
+            throw error;
+        }
+    }
+
+    async processMission(query, stt) {
+        try {
+            const headers = { ...this.headers, 'tg-init-data': query };
+
+            const missionResponse = await axios.get('https://pro-api.animix.tech/public/mission/list', {
+                headers,
+            });
+            const missions = missionResponse.data.result;
+
+            const availablePets = await this.Pets(query, stt);
+
+            const currentTime = Math.floor(Date.now() / 1000);
+            const canCompleteMissions = [];
+
+            for (const mission of missions) {
+                if (mission.end_time < currentTime) {
+                    canCompleteMissions.push(mission);
+                }
+            }
+
+            for (const mission of canCompleteMissions) {
+                const { mission_id } = mission;
+                const claimPayload = { mission_id };
+
+                const claimResponse = await axios.post(
+                    'https://pro-api.animix.tech/public/mission/claim',
+                    claimPayload,
+                    { headers }
+                );
+                if (claimResponse.data.error_code === null) {
+                    console.log(`[Account ${stt}] Claim mission ${mission_id} thành công`.green);
+                } else {
+                    console.log(`[Account ${stt}] Claim mission ${mission_id} thất bại`.red);
+                    continue;
+                }
+
+                await this.sleep(2000);
+            }
+
+            const updatedMissionResponse = await axios.get('https://pro-api.animix.tech/public/mission/list', {
+                headers,
+            });
+            const updatedMissions = updatedMissionResponse.data.result;
+
+            if (!missionsData) {
+                throw new Error('missionsData chưa được tải. Vui lòng gọi loadMissionsFromAnimix trước.');
+            }
+
+            const unstartedMissions = [];
+            for (const mission of missionsData.result) {
+                const missionInResponse = updatedMissions.find(m => m.mission_id === mission.mission_id.toString());
+                if (!missionInResponse) {
+                    unstartedMissions.push(mission);
+                }
+            }
+
+            for (const mission of unstartedMissions) {
+                const {
+                    mission_id,
+                    pet_1_class,
+                    pet_1_star,
+                    pet_2_class,
+                    pet_2_star,
+                    pet_3_class,
+                    pet_3_star,
+                } = mission;
+
+                const selectedPets = [];
+                const conditions = [
+                    { class: pet_1_class, star: pet_1_star },
+                    { class: pet_2_class, star: pet_2_star },
+                    { class: pet_3_class, star: pet_3_star },
+                ];
+
+                let canEnter = true;
+                let missingConditions = [];
+                for (const condition of conditions) {
+                    const { class: petClass, star: petStar } = condition;
+                    if (!petClass || !petStar) continue;
+
+                    const key = `${petClass}_${petStar}`;
+                    if (!availablePets[key] || availablePets[key].length === 0) {
+                        canEnter = false;
+                        missingConditions.push(`Thiếu pet ${petClass} ${petStar}`);
+                        break;
+                    }
+
+                    let petFound = false;
+                    for (const pet of availablePets[key]) {
+                        if (pet.amount > 0) {
+                            selectedPets.push({
+                                pet_id: pet.pet_id,
+                                class: petClass,
+                                star: petStar,
+                            });
+                            pet.amount -= 1;
+                            petFound = true;
+                            break;
+                        }
+                    }
+
+                    if (!petFound) {
+                        canEnter = false;
+                        missingConditions.push(`Không đủ pet ${petClass} ${petStar}`);
                         break;
                     }
                 }
 
-                if (!petFound) {
-                    canEnter = false;
-                    missingConditions.push(`Không đủ pet ${petClass} ${petStar}`);
-                    break;
+                if (!canEnter) {
+                    continue;
                 }
+
+                const payload = {
+                    mission_id,
+                    pet_1_id: selectedPets[0]?.pet_id || null,
+                    pet_2_id: selectedPets[1]?.pet_id || null,
+                    pet_3_id: selectedPets[2]?.pet_id || null,
+                };
+                const enterResponse = await axios.post(
+                    'https://pro-api.animix.tech/public/mission/enter',
+                    payload,
+                    { headers }
+                );
+
+                if (enterResponse.data.error_code === null) {
+                    console.log(`[Account ${stt}] Tham gia mission ${mission_id} thành công`.green);
+                } else {
+                    console.log(`[Account ${stt}] Thất bại khi tham gia mission ${mission_id}:`, enterResponse.data);
+                }
+
+                await this.sleep(2000);
             }
 
-            if (!canEnter) {
-                continue;
-            }
-
-            const payload = {
-                mission_id,
-                pet_1_id: selectedPets[0]?.pet_id || null,
-                pet_2_id: selectedPets[1]?.pet_id || null,
-                pet_3_id: selectedPets[2]?.pet_id || null,
-            };
-            const enterResponse = await axios.post(
-                'https://pro-api.animix.tech/public/mission/enter',
-                payload,
-                { headers}
-            );
-
-            if (enterResponse.data.error_code === null) {
-                console.log(`[Account ${stt}] Tham gia mission ${mission_id} thành công`.green);
-            } else {
-                console.log(`[Account ${stt}] Thất bại khi tham gia mission ${mission_id}:`, enterResponse.data);
-            }
-
-            await this.sleep(2000); 
+        } catch (error) {
+            console.log(`[Account ${stt}] Lỗi: ${error.message}`.red);
+            throw error;
         }
-
-    } catch (error) {
-        console.log(`[Account ${stt}] Lỗi: ${error.message}`.red);
-        throw error;  
     }
-}
 
 async getList(query, stt) {
     try {
@@ -931,6 +948,7 @@ async checkQuest(questCode, query, stt) {
     async processQueries(queryFilePath) {
         const startTime = Date.now();
         try {
+            await loadMissionsFromAnimix();
             const queryData = fs.readFileSync(queryFilePath, 'utf-8');
             const queries = queryData.split('\n').map(line => line.trim()).filter(line => line !== '');
             
