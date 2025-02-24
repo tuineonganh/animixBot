@@ -953,7 +953,7 @@ async getList(proxyAgent, query, stt) {
  
         if (response.status === 200) {
             const questCodes = response.data.result.quests
-                .filter(quest => quest.status === false && quest.quest_code !== 'REFERRAL_0' && quest.quest_code !== 'HI_CLAN' && quest.quest_code !== 'HPY25_CLAN')
+                .filter(quest => quest.status === false && quest.quest_code !== 'REFERRAL_0' && quest.quest_code !== 'HI_CLAN' && quest.quest_code !== 'HPY25_CLAN' && quest.quest_code !== 'REFERRAL_2' && quest.quest_code !== 'REFERRAL_5' && quest.quest_code !== 'REFERRAL_10')
                 .map(quest => quest.quest_code);
             await this.sleep(2000); 
 
