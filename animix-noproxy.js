@@ -113,6 +113,56 @@ async quitClan(query, stt, currentClanId) {
     }
 }
 
+async claimPVP(query, stt) {
+    try {
+        const headers = { ...this.headers, 'tg-init-data': `${query}` };
+
+        const infoResponse = await axios.get(
+            'https://pro-api.animix.tech/public/battle/user/info',
+            { headers }
+        );
+
+        if (infoResponse.status !== 200 || !infoResponse.data.result?.not_claimed_rewards_info) {
+            return;
+        }
+
+        const unclaimedSeasons = [infoResponse.data.result.not_claimed_rewards_info.season_id];
+
+        if (!unclaimedSeasons.length) {
+            console.log(`[Account ${stt}] Không có season nào để claim.`.yellow);
+            return;
+        }
+
+
+        for (const season_id of unclaimedSeasons) {
+            try {
+                const payload = { season_id };
+                const response = await axios.post(
+                    'https://pro-api.animix.tech/public/battle/user/reward/claim',
+                    payload,
+                    { headers }
+                );
+
+                if (response.status === 200 && response.data.result?.status === true) {
+                    const rewards = response.data.result.rewards
+                        .map(r => `id${r.id}:${r.amount}`)
+                        .join(', ');
+
+                    console.log(`[Account ${stt}] Claim PVP reward season ${season_id} thành công: ${rewards}`.green);
+                } else {
+                    console.log(`[Account ${stt}] Claim PVP reward season ${season_id} thất bại.`.yellow);
+                }
+
+                await this.sleep(2000); 
+            } catch (error) {
+                console.log(`[Account ${stt}] Lỗi khi claim season ${season_id}, bỏ qua và tiếp tục...`.red);
+            }
+        }
+    } catch (error) {
+        console.log(`[Account ${stt}] Lỗi khi Claim PVP reward: ${error.message}`.red);
+    }
+}
+    
 async setDefenseTeam(query, stt) {
     try {
         const headers = { ...this.headers, 'tg-init-data': `${query}` };
@@ -961,6 +1011,7 @@ async checkQuest(questCode, query, stt) {
                         try {
                             await this.runWithTimeout(async () => {
                                 await this.checkClan(query, stt);
+                                await this.claimPVP(query, stt);   
                                 await this.claimSeasonPass(query, stt);
                                 await this.gacha(query, stt);
                                 await this.setDefenseTeam(query, stt);
