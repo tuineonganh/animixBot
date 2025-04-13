@@ -4,7 +4,7 @@ const { HttpsProxyAgent } = require('https-proxy-agent');
 const colors = require('colors');
 const readline = require("readline");
 
-const clan_id = 143;
+const clan_id = 4428;
 const maxThreads= 100;
 const taskTimeout = 20 * 60 * 1000; // Timeout 20 phút cho mỗi tài khoản
 
